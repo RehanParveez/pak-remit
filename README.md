@@ -30,10 +30,10 @@ Circuit Breakers
 According to recent reports, Pakistan receives nearly $30 Billion in remittances every year from overseas, mainly from overseas pakistani's. And the thing is this do support our countries overall economy quite a much. Therefore in order to keep learning I am building this project and it will help me design a system which can handle thousands of people securely sending/sharing money at the same time.
 
 # Things to Learn:
-In my last project for the first time I used concpets like database sharding and circuit breakers, so now on this project I am gonna re practice those concepts to use them correclty and also at the same time I am gonna and learn try and learn some new concepts, so following are the main concepts which are going to be used in this project:
+In my last project for the first time I used concpets like database sharding and circuit breakers, so now on this project I am gonna re practice those concepts to use them correclty and also at the same time I am gonna try and learn some new concepts, so following are the main concepts which are going to be used in this project:
 
 - Event Sourcing:
-See normally while working in an app for example, we just overwrite a number like => balance = 5000. But in this PakRemit project, I am gonna learn the concept of "Event Sourcing." And this means we save every single thing that happened as an event and wich cant be changed. Like it’s a record that cant be edited or deleted, and this is how mainly the real banks work.
+See normally while working in an app for example, we just overwrite a number like => balance = 5000. But in this PakRemit project, I am gonna learn the concept of "Event Sourcing." And this means we save every single thing that happened as an event and which cant be changed. Like it’s a record that cant be edited or deleted, and this is how mainly the real banks work.
 
 - Advanced Database Sharding:
 In this projet I am gonna use much complex form of sharding logic. Like I am gonna use the Horizontal Sharding for wallets which is based on the User IDs and the Time based Sharding for the transactions purposes.
@@ -42,7 +42,7 @@ In this projet I am gonna use much complex form of sharding logic. Like I am gon
 I am gonna use this concept as well to handle the failures correctly.
 
 - Distributed Tracing:
-This features is about keeping the track of like how the requests are working across the different services.
+This features is about keeping the track of how the requests are working across the different services.
 
 # Key Features:
 - The Immutable Record

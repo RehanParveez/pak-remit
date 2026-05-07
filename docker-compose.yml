@@ -1,0 +1,101 @@
+version: '3.8'
+
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: pakremit_redis
+    ports:
+      - "6379:6379"
+    networks:
+      - pakremit_network
+
+  db_identity:
+    image: postgres:15-alpine
+    container_name: db_identity
+    environment:
+      POSTGRES_DB: identity_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: rehpostgre1
+    ports:
+      - "5431:5432"
+    networks:
+      - pakremit_network
+
+  db_wallet:
+    image: postgres:15-alpine
+    container_name: db_wallet
+    environment:
+      POSTGRES_DB: wallet_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: rehpostgre1
+    ports:
+      - "5433:5432"
+    networks:
+      - pakremit_network
+
+  db_transaction:
+    image: postgres:15-alpine
+    container_name: db_transaction
+    environment:
+      POSTGRES_DB: transaction_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: rehpostgre1
+    ports:
+      - "5434:5432"
+    networks:
+      - pakremit_network
+
+  db_ledger:
+    image: postgres:15-alpine
+    container_name: db_record
+    environment:
+      POSTGRES_DB: record_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: rehpostgre1
+    ports:
+      - "5435:5432"
+    networks:
+      - pakremit_network
+
+  db_forex:
+    image: postgres:15-alpine
+    container_name: db_forex
+    environment:
+      POSTGRES_DB: forex_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: rehpostgre1
+    ports:
+      - "5436:5432"
+    networks:
+      - pakremit_network
+
+  db_recon:
+    image: postgres:15-alpine
+    container_name: db_settlement
+    environment:
+      POSTGRES_DB: settlement_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: rehpostgre1
+    ports:
+      - "5437:5432"
+    networks:
+      - pakremit_network
+
+  db_notification:
+    image: postgres:15-alpine
+    container_name: db_notification
+    environment:
+      POSTGRES_DB: notification_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: rehpostgre1
+    ports:
+      - "5438:5432"
+    networks:
+      - pakremit_network
+
+networks:
+  pakremit_network:
+    driver: bridge
+
+volumes:
+  postgres_data:
