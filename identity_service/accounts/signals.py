@@ -1,0 +1,21 @@
+from django.dispatch import receiver
+from django.db.models.signals import post_save
+from accounts.models import User
+from django.conf import settings
+import json
+import hmac
+import hashlib
+import requests
+
+@receiver(post_save, sender=User)
+def trigger_wallet_creation(sender, instance, created, **kwargs):
+  if not created:
+    return
+  url = 'http://127.0.0.1:8001/wallet/wallets/create-internal/'
+  secret_key = getattr(settings, 'INTERNAL_SERVICE_SECRET', 'pak_remit_secret_2026')
+  
+  payload = {'user_id': str(instance.id), 'currency': 'PKR', 'initial_balance': '0.00'}
+  payload_str = json.dumps(payload, sort_keys=True)
+  signature = hmac.new(secret_key.encode(), payload_str.encode(), hashlib.sha256).hexdigest()
+  headers = {'X-Internal-Token': secret_key, 'X-Internal-Signature': signature, 'Content-Type': 'application/json'}
+  requests.post(url, json=payload, headers=headers, timeout=5)

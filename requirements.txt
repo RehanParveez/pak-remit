@@ -6,3 +6,4 @@ django-filter
 redis 
 celery
 python-dotenv
+requests
