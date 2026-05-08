@@ -7,3 +7,4 @@ redis
 celery
 python-dotenv
 requests
+django-celery-beat
