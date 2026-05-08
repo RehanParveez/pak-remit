@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 
 import os
 import sys
+from datetime import timedelta
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -39,6 +40,10 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'rest_framework',
+    'rest_framework_simplejwt',
+    'django_filters',
+    'wallets'
 ]
 
 MIDDLEWARE = [
@@ -48,6 +53,7 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'wallets.middleware.ShardRoutingMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
@@ -83,9 +89,28 @@ DATABASES = {
         'PASSWORD': 'rehpostgre1',
         'HOST': 'localhost',
         'PORT': '5433',  
+    },
+    
+    'shard_1': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'wallet_shard_1',
+        'USER': 'postgres',
+        'PASSWORD': 'rehpostgre1',
+        'HOST': 'localhost',
+        'PORT': '5433',
+    },
+
+    'shard_2': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'wallet_shard_2',
+        'USER': 'postgres',
+        'PASSWORD': 'rehpostgre1',
+        'HOST': 'localhost',
+        'PORT': '5433',
     }
 }
 
+DATABASE_ROUTERS = ['wallets.router.WalletShardRouter']
 
 # Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
@@ -127,3 +152,34 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework_simplejwt.authentication.JWTTokenUserAuthentication',
+        'rest_framework.authentication.SessionAuthentication', 
+    ),
+    
+    'UNAUTHENTICATED_USER': None, 
+
+    'DEFAULT_PERMISSION_CLASSES': (
+        'rest_framework.permissions.IsAuthenticated',
+    ),
+    'DEFAULT_FILTER_BACKENDS': (
+        'django_filters.rest_framework.DjangoFilterBackend',
+        'rest_framework.filters.SearchFilter',
+        'rest_framework.filters.OrderingFilter',
+    )
+}
+
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
+    'ROTATE_REFRESH_TOKENS': True,
+    'ALGORITHM': 'HS256',
+    'SIGNING_KEY': 'django-insecure-dz%+9%q0#qo(f__l!a%mfhk+53jlb#3f_n%twv9_x9w+qq*vzg',
+    'AUTH_HEADER_TYPES': ('Bearer',),
+    'USER_ID_FIELD': 'id',
+    'USER_ID_CLAIM': 'user_id',
+}
+
+INTERNAL_SERVICE_SECRET = 'p4k-r3m1t-sup3r-s3cr3t-2026-v1'

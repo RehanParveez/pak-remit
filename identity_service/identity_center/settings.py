@@ -177,3 +177,5 @@ EMAIL_USE_TLS = True
 EMAIL_HOST_USER = 'rehanrural@gmail.com'
 EMAIL_HOST_PASSWORD = 'fsxdvkynuukaojew'
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
+
+INTERNAL_SERVICE_SECRET = 'p4k-r3m1t-sup3r-s3cr3t-2026-v1'

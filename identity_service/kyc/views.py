@@ -31,12 +31,13 @@ class KYCViewSet(viewsets.ModelViewSet):
 
   def get_queryset(self):
     user = self.request.user
+    auth_data = self.request.auth
     if user.is_staff:
-      return KYCProfile.objects.all()
-    user_control = getattr(user, 'control', None)
+      return self.queryset
+    user_control = auth_data.get('control')
     if user_control == 'admin':
-      return KYCProfile.objects.all()
-    return KYCProfile.objects.filter(user=user)
+      return self.queryset
+    return self.queryset.filter(user=user)
 
   @action(detail=False, methods=['post'])
   def submit(self, request):

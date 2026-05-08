@@ -3,6 +3,7 @@ from rest_framework.response import Response
 from rest_framework.decorators import action
 from rest_framework_simplejwt.views import TokenObtainPairView
 from accounts.serializers.detail import UserSerializer, UserSerializer, CustomTokenObtainPairSerializer
+from accounts.models import User
 
 class AuthViewSet(viewsets.GenericViewSet):
   permission_classes = [permissions.AllowAny]
@@ -20,8 +21,12 @@ class CustomTokenObtainPairView(TokenObtainPairView):
   serializer_class = CustomTokenObtainPairSerializer
 
 class UserViewSet(viewsets.GenericViewSet):
+  queryset = User.objects.all()
   permission_classes = [permissions.IsAuthenticated]
   serializer_class = UserSerializer
+  
+  def get_queryset(self):
+    return self.queryset.filter(id=self.request.user.id)
 
   @action(detail=False, methods=['get'])
   def profile(self, request):

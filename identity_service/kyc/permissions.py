@@ -7,9 +7,9 @@ class AdminPermission(permissions.BasePermission):
       return False
     if not user.is_authenticated:
       return False
-    if user.is_staff:
+    if request.auth.get('is_staff'):
       return True
-    user_control = getattr(user, 'control', None)
+    user_control = request.auth.get('control')
     if user_control == 'admin':
       return True
 
@@ -22,9 +22,7 @@ class KYCVerifiedPermission(permissions.BasePermission):
       return False
     if not user.is_authenticated:
       return False
-    if not hasattr(user, 'kyc_profile'):
-      return False
-    if user.kyc_profile.is_verified:
+    if request.auth.get('is_verified'):
       return True
 
     return False
