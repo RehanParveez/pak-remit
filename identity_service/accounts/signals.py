@@ -11,7 +11,7 @@ import requests
 def trigger_wallet_creation(sender, instance, created, **kwargs):
   if not created:
     return
-  url = 'http://127.0.0.1:8001/wallet/wallets/create-internal/'
+  url = 'http://127.0.0.1:8001/wallets/wallet/create_internal/'
   secret_key = getattr(settings, 'INTERNAL_SERVICE_SECRET', 'pak_remit_secret_2026')
   
   payload = {'user_id': str(instance.id), 'currency': 'PKR', 'initial_balance': '0.00'}

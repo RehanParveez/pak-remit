@@ -10,7 +10,7 @@ def trigger_wallet_upgrade(sender, instance, created, **kwargs):
     return
   if not instance.is_verified:
     return
-  url = f'http://127.0.0.1:8001/wallet/wallets/{instance.user.id}/upgrade-tier/'
+  url = f'http://127.0.0.1:8001/wallets/wallet/{instance.user.id}/upgrade_tier/'
   secret = getattr(settings, 'INTERNAL_SERVICE_SECRET', 'pak_remit_secret_2026')
   payload = {'tier': instance.tier}
   payload_str = json.dumps(payload, sort_keys=True)

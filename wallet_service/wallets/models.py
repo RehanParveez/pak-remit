@@ -18,16 +18,15 @@ class Wallet(BaseModel):
   currency = models.CharField(max_length=3, choices=CURRENCY_CHOICES, default = 'pkr') 
   balance = models.DecimalField(max_digits=20, decimal_places=2, default=0.00)
   reserved_balance = models.DecimalField(max_digits=20, decimal_places=2, default=0.00)
-  available_balance = models.DecimalField(max_digits=20, decimal_places=2, default=0.00)
   status = models.CharField(max_length=15, choices=STATUS_CHOICES, default = 'active')
 
   class Meta:
     unique_together = ('user_id', 'currency')
     indexes = [models.Index(fields=['currency', 'user_id'])]
 
-  def save(self, *args, **kwargs):
-    self.available_balance = self.balance - self.reserved_balance
-    super().save(*args, **kwargs)
+  @property
+  def available_balance(self):
+    return self.balance - self.reserved_balance
 
   def __str__(self):
     return f'{self.user_id}'
@@ -43,6 +42,10 @@ class WalletLimit(BaseModel):
   daily_limit = models.DecimalField(max_digits=30, decimal_places=2, default=20000.00)
   monthly_limit = models.DecimalField(max_digits=30, decimal_places=2, default=5000000.00)
   transaction_limit = models.DecimalField(max_digits=30, decimal_places=2, default=10000.00)
+  daily_spent = models.DecimalField(max_digits=30, decimal_places=2, default=0.00)
+  
+  def __str__(self):
+    return f'limit for {self.wallet.user_id}'
 
 class WalletBookings(BaseModel):
   wallet = models.ForeignKey(Wallet, on_delete=models.CASCADE, related_name = 'bookings')
@@ -65,3 +68,6 @@ class WalletRecord(BaseModel):
   amount = models.DecimalField(max_digits=30, decimal_places=2)
   type = models.CharField(max_length=12, choices=ENTRY_TYPES)
   description = models.CharField(max_length=270)
+  
+  def __str__(self):
+    return f'{self.type.capitalize()} of {self.amount} user {self.wallet.user_id}'

@@ -8,9 +8,10 @@ class WalletService:
   @staticmethod
   def create_wallet(user_id, currency = 'pkr'):
     with transaction.atomic():
-      wallet = Wallet.objects.create(user_id=user_id, currency=currency.lower(), balance=Decimal('0.00'),
-        reserved_balance=Decimal('0.00'), available_balance=Decimal('0.00'))
-      WalletLimit.objects.create(wallet=wallet)
+      wallet, created = Wallet.objects.get_or_create(user_id=user_id, currency=currency.lower(), defaults={'balance': Decimal('0.00'),
+        'reserved_balance': Decimal('0.00')})
+      if created:
+        WalletLimit.objects.create(wallet=wallet)
       return wallet
   
   @staticmethod

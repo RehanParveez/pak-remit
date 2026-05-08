@@ -36,8 +36,11 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
   def get_token(cls, user):
     token = super().get_token(user)
     token['user_id'] = str(user.id)
-    token['role'] = user.control
-    token['is_kyc_verified'] = user.profile.is_verified
+    token['control'] = user.control
+    is_verified = False
+    if hasattr(user, 'kyc_profile'):
+      is_verified = user.kyc_profile.is_verified
+    token['is_kyc_verified'] = is_verified
     return token
 
   def validate(self, attrs):
@@ -57,8 +60,11 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
     AuthService.register_or_update_device(user=auth_user, fingerprint=request.data.get('device_fingerprint', 'web_default'),
       device_type=request.data.get('device_type', 'web'), ip=request.META.get('REMOTE_ADDR'))
     data = super().validate(attrs)
+    is_verified = False
+    if hasattr(self.user, 'kyc_profile'):
+      is_verified = self.user.kyc_profile.is_verified
     data['user_id'] = auth_user.id
-    data['role'] = auth_user.control
-    data['is_kyc_verified'] = auth_user.profile.is_verified
+    data['control'] = auth_user.control
+    data['is_kyc_verified'] = is_verified
         
     return data

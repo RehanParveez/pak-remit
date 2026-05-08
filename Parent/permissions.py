@@ -6,7 +6,7 @@ class PakRemitPermission(permissions.BasePermission):
       return False
     user_control = request.auth.get('control')
     is_staff = request.auth.get('is_staff', False)
-    is_verified = request.auth.get('is_verified', False)
+    is_verified = request.auth.get('is_kyc_verified', False)
     if user_control == 'admin':
       return True
     if is_staff:
@@ -23,9 +23,9 @@ class PakRemitPermission(permissions.BasePermission):
     if not request.auth:
       return False
     requesting_user_id = str(request.auth.get('user_id'))
-    user_role = request.auth.get('role')
+    user_control = request.auth.get('control')
 
-    if user_role == 'admin':
+    if user_control == 'admin':
       return True
     if hasattr(obj, 'email') and hasattr(obj, 'id'):
       return str(obj.id) == requesting_user_id
