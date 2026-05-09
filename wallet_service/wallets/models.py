@@ -42,7 +42,6 @@ class WalletLimit(BaseModel):
   daily_limit = models.DecimalField(max_digits=30, decimal_places=2, default=20000.00)
   monthly_limit = models.DecimalField(max_digits=30, decimal_places=2, default=5000000.00)
   transaction_limit = models.DecimalField(max_digits=30, decimal_places=2, default=10000.00)
-  daily_spent = models.DecimalField(max_digits=30, decimal_places=2, default=0.00)
   
   def __str__(self):
     return f'limit for {self.wallet.user_id}'
