@@ -44,6 +44,8 @@ services:
       POSTGRES_PASSWORD: rehpostgre1
     ports:
       - "5434:5432"
+    volumes:
+      - ./init-transactions.sql:/docker-entrypoint-initdb.d/init-transactions.sql
     networks:
       - pakremit_network
 

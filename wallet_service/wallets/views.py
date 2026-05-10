@@ -1,14 +1,14 @@
 from rest_framework import viewsets, mixins
-from wallets.models import Wallet, WalletRecord
+from wallets.models import Wallet, WalletRecord, WalletBookings
 from wallets.serializers.detail import WalletSerializer
 from wallets.permissions import InternalServiceGuard, WalletAccessPermission
 from django.conf import settings
-from rest_framework.permissions import IsAdminUser
 from wallets.selectors import WalletSelector
 from rest_framework.decorators import action
 from wallets.serializers.basic import InternalWalletCreateSerializer
 from wallets.services import WalletService
 from rest_framework.response import Response
+from decimal import Decimal
 
 class WalletViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.GenericViewSet):
   queryset = Wallet.objects.all()
@@ -18,6 +18,12 @@ class WalletViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.G
     if self.action == 'create_internal':
       return [InternalServiceGuard()]
     if self.action == 'upgrade_tier':
+      return [InternalServiceGuard()]
+    if self.action == 'check_balance':
+      return [InternalServiceGuard()]
+    if self.action == 'settle':
+      return [InternalServiceGuard()]
+    if self.action == 'reserve':
       return [InternalServiceGuard()]
     return [WalletAccessPermission()]
 
@@ -66,6 +72,37 @@ class WalletViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.G
       wallet.refresh_from_db()
       return Response(WalletSerializer(wallet).data, status=200)
     return Response({'err': 'wrong tier. it s/h be tier1, tier2, or tier3.'}, status=400)
+  
+  @action(detail=False, methods=['post'], permission_classes=[InternalServiceGuard])
+  def check_balance(self, request):
+    from parent.sharding_utils import get_shard_for_user, set_current_shard, clear_current_shard
+    wallet_id = request.data.get('wallet_id')
+    amount_str = request.data.get('amount')
+    if not wallet_id or not amount_str:
+      return Response({'err': 'wallet_id and amount are need.'}, status=400)
+    try:
+      amount = Decimal(str(amount_str))
+    except (ValueError, TypeError):
+      return Response({'err': 'Invalid amount format.'}, status=400)
+    try:
+      wallet = None
+      for db in ['default', 'shard_1', 'shard_2']:
+        try:
+          wallet = Wallet.objects.using(db).get(id=wallet_id) 
+          break
+        except Wallet.DoesNotExist:
+          continue
+      if not wallet:
+        return Response({'err': 'Wallet not found.'}, status=404)
+      shard = get_shard_for_user(wallet.user_id)
+      set_current_shard(shard)
+      if wallet.status != 'active':
+        return Response({'err': f'Wallet is {wallet.status}.'}, status=400)
+      if wallet.available_balance >= amount:
+        return Response({'status': 'sufficient', 'available': str(wallet.available_balance)}, status=200)
+      return Response({'err': 'not enough balance.', 'available': str(wallet.available_balance), 'required': str(amount)}, status=400)
+    finally:
+      clear_current_shard()
 
   @action(detail=True, methods=['post'])
   def freeze(self, request, pk=None):
@@ -75,3 +112,38 @@ class WalletViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.G
     wallet.status = 'frozen'
     wallet.save(update_fields=['status']) 
     return Response({'message': f'wallet {wallet.id} is now frozen.'}, status=200)
+  
+  @action(detail=True, methods=['post'])
+  def unfreeze(self, request, pk=None):
+    wallet = self.get_object()
+    if wallet.status == 'active':
+      return Response({'message': 'This wallet is already active.'}, status=400)
+    wallet.status = 'active'
+    wallet.save(update_fields=['status']) 
+    return Response({'message': f'Wallet {wallet.id} is now active.'}, status=200)
+  
+  @action(detail=False, methods=['post'])
+  def reserve(self, request):
+    wallet_id = request.data.get('wallet_id') 
+    amount = request.data.get('amount')
+    transaction_id = request.data.get('transaction_id')
+
+    wallet = Wallet.objects.filter(user_id=wallet_id).first()
+    if not wallet:
+      return Response({'err': 'Wallet not found'}, status=404)
+    try:
+      booking = WalletService.reserve_funds(wallet_id=wallet.id, amount=amount, reason=f'TXN_{transaction_id}')
+      return Response({'booking_id': str(booking.id)}, status=200)
+    except ValueError as e:
+      return Response({'err': str(e)}, status=400)
+
+  @action(detail=False, methods=['post'])
+  def settle(self, request):
+    transaction_id = request.data.get('transaction_id')
+    booking = WalletBookings.objects.filter(reason=f'TXN_{transaction_id}', is_committed=False).first()
+    if not booking:
+      return Response({'err': 'no active booking is found for this transa'}, status=404)
+    success = WalletService.commit_funds(booking.id)
+    if success:
+      return Response({'status': 'settled'}, status=200)
+    return Response({'err': 'settlement failed'}, status=400)

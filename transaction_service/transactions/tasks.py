@@ -1,0 +1,65 @@
+from celery import shared_task
+from transactions.services import shard_context
+from transactions.models import Transaction
+import requests
+import time
+from django.utils import timezone
+from django.core.mail import send_mail
+from django.conf import settings
+
+@shared_task
+def process_transaction_async(transaction_id):
+  with shard_context():
+    txn = Transaction.objects.filter(id=transaction_id).first()
+    if not txn:
+      return f'Transaction {transaction_id} not found.'
+    txn.status = 'validating'
+    txn.save(update_fields=['status'])
+    url_reserve = f'{settings.WALLET_SERVICE_URL}/wallets/wallet/reserve/'
+    headers = {'X-Internal-Token': settings.INTERNAL_SERVICE_SECRET}
+    payload = {'wallet_id': str(txn.from_wallet_id), 'amount': str(txn.amount), 'transaction_id': str(txn.id)}
+    response = requests.post(url_reserve, json=payload, headers=headers, timeout=10)
+    if response.status_code != 200:
+      txn.status = 'failed'
+      txn.save(update_fields=['status'])
+      return 'Failed at reservation.'
+
+    txn.status = 'processing'
+    txn.save(update_fields=['status'])
+    time.sleep(2) 
+    url_settle = f'{settings.WALLET_SERVICE_URL}/wallets/wallet/settle/'
+    settle_response = requests.post(url_settle, json={'transaction_id': str(txn.id)}, headers=headers, timeout=10)
+
+    if settle_response.status_code != 200:
+      txn.status = 'failed'
+      txn.save(update_fields=['status'])
+      return 'Failed at settlement.'
+    txn.status = 'completed'
+    txn.completed_at = timezone.now()
+    txn.save(update_fields=['status', 'completed_at'])
+    send_transaction_email(txn.id)
+    return f'the transa {txn.id} is finished.'
+
+@shared_task
+def send_transaction_email(transaction_id):
+  with shard_context():
+    txn = Transaction.objects.filter(id=transaction_id).first()
+    if not txn:
+      return
+    subject = f'Transaction {txn.status.capitalize()}'
+    message = f'Transaction {txn.id} for {txn.amount} {txn.currency} is now {txn.status}.'
+        
+    send_mail(subject=subject, message=message, from_email=settings.EMAIL_HOST_USER, recipient_list=['rehanrural@gmail.com'],
+      fail_silently=True)
+
+@shared_task
+def retry_failed_transactions():
+  five_mins_ago = timezone.now() - timezone.timedelta(minutes=5)
+  with shard_context():
+    stuck_list = Transaction.objects.filter(status = 'processing', created_at__lt=five_mins_ago)
+    for txn in stuck_list:
+      process_transaction_async.delay(txn.id)
+
+@shared_task
+def cleanup_old_transactions():
+  print('running the mont archive task')
