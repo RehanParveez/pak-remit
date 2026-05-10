@@ -32,6 +32,8 @@ class PakRemitPermission(permissions.BasePermission):
     if hasattr(obj, 'user'):
       obj_owner_id = getattr(obj.user, 'id', obj.user)
       return str(obj_owner_id) == requesting_user_id
+    if hasattr(obj, 'wallet'):
+      return str(obj.wallet.user_id) == requesting_user_id
     for field in ['user_id', 'owner_id', 'customer_id']:
       if hasattr(obj, field):
         return str(getattr(obj, field)) == requesting_user_id
