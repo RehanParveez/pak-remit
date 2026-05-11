@@ -159,20 +159,3 @@ class TransactionService:
     with shard_context(txn.created_at):
       with transaction.atomic():
         return StateMachine.transition(txn, 'completed')
-    
-  @classmethod
-  def refund_transaction(cls, original_transaction_id, reason):
-    original_txn = Transaction.objects.get(id=original_transaction_id)
-    if original_txn.status != 'completed':
-      raise ValueError('Can only refund completed transactions')
-    if original_txn.status == 'refunded':
-      raise ValueError('Transaction already refunded')
- 
-    with shard_context():
-      with transaction.atomic():
-        refund_txn = Transaction.objects.create(from_wallet_id=original_txn.to_wallet_id, to_wallet_id=original_txn.from_wallet_id,
-          amount=original_txn.amount, currency=original_txn.currency, transaction_type = 'refund',
-           idempotency_key = f'refund_{original_txn.idempotency_key}', status = 'initiated')      
-        TransactionMetadata.objects.create(transaction=refund_txn, description=f'refund for transaction {original_txn.id}', external_ref=str(original_txn.id))    
-        StateMachine.transition(original_txn, 'refunded')
-        return refund_txn

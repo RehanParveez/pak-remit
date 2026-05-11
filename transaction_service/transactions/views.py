@@ -60,9 +60,3 @@ class TransactionViewSet(viewsets.ReadOnlyModelViewSet):
       amount=request.data.get('amount'), currency=request.data.get('currency', 'pkr'), idempotency_key=idempotency_key, txn_type = 'merchant', metadata=metadata)  
     serializer = self.get_serializer(txn)
     return Response(serializer.data, status=201)
-
-  @action(detail=True, methods=['post'], permission_classes=[PakRemitPermission, RefundPermission])
-  def refund(self, request, pk=None):
-    reason = request.data.get('reason', 'User requested refund')
-    refund_txn = TransactionService.refund_transaction(original_transaction_id=pk, reason=reason)
-    return Response({'message': 'Refund initiated', 'refund_id': refund_txn.id}, status=201)

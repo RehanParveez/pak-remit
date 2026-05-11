@@ -10,8 +10,7 @@ class Refund(BaseModel):
     ('completed', 'Completed'),
   )
   original_transaction_id = models.UUIDField(db_index=True)
-  refund_transaction = models.OneToOneField(Transaction, on_delete=models.SET_NULL, null=True, blank=True, 
-    related_name = 'refund_origin')
+  refund_transaction = models.UUIDField(null=True, blank=True, db_index=True)
   amount = models.DecimalField(max_digits=14, decimal_places=2)
   reason = models.TextField()
   status = models.CharField(max_length=25, choices=STATUS_CHOICES, default = 'requested')
