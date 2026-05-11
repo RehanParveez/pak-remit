@@ -44,6 +44,7 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt',
     'django_filters',
     'transactions',
+    'refunds',
     'django_celery_beat'
 ]
 

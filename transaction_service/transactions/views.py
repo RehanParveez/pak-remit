@@ -4,6 +4,8 @@ from transactions.models import Transaction
 from transactions.serializers.detail import TransactionSerializer
 from rest_framework.decorators import action
 from parent.permissions import PakRemitPermission
+from django.utils.dateparse import parse_date
+from django.db.models import Q
 from transactions.permissions import EnoughBalancePerm, RefundPermission
 from rest_framework.response import Response
 from transactions.services import TransactionService, shard_context, IdempotencyService
@@ -22,9 +24,12 @@ class TransactionViewSet(viewsets.ReadOnlyModelViewSet):
     user_id = user_auth.get('user_id')
     txn_status = self.request.query_params.get('status')
     start_date = self.request.query_params.get('start_date')
-    with shard_context():
-      queryset = Transaction.objects.filter(from_wallet_id=user_id) | \
-        Transaction.objects.filter(to_wallet_id=user_id)
+    query_timestamp = None
+    if start_date:
+      query_timestamp = parse_date(start_date)
+        
+    with shard_context(timestamp=query_timestamp):
+      queryset = Transaction.objects.filter(Q(from_wallet_id=user_id) | Q(to_wallet_id=user_id))
       if txn_status:
         queryset = queryset.filter(status=txn_status)
       if start_date:
