@@ -1,10 +1,11 @@
 from celery import shared_task
 from transactions.services import shard_context
 from transactions.models import Transaction
+# from urllib.parse import urljoin
 import requests
 import time
 from django.utils import timezone
-from django.core.mail import send_mail
+from celery import current_app
 from django.conf import settings
 
 @shared_task
@@ -38,6 +39,7 @@ def process_transaction_async(transaction_id):
     txn.completed_at = timezone.now()
     txn.save(update_fields=['status', 'completed_at'])
     send_transaction_email(txn.id)
+    current_app.send_task('webhooks.tasks.trigger_transaction_webhook', args=[str(txn.id), str(txn.to_wallet_id)])
     return f'the transa {txn.id} is finished.'
 
 @shared_task
@@ -45,12 +47,11 @@ def send_transaction_email(transaction_id):
   with shard_context():
     txn = Transaction.objects.filter(id=transaction_id).first()
     if not txn:
-      return
-    subject = f'Transaction {txn.status.capitalize()}'
-    message = f'Transaction {txn.id} for {txn.amount} {txn.currency} is now {txn.status}.'
-        
-    send_mail(subject=subject, message=message, from_email=settings.EMAIL_HOST_USER, recipient_list=['rehanrural@gmail.com'],
-      fail_silently=True)
+      return f'transaction {transaction_id} not pres.'
+    if txn.status != 'completed':
+      return f'transaction {transaction_id} is in {txn.status} state.'
+    current_app.send_task('emails.tasks.send_transaction_notification', args=[str(txn.id), 'rehanrural@gmail.com', 'rehanrural@gmail.com'])
+    return f'notifi for Txn {txn.id} to redis.'
 
 @shared_task
 def retry_failed_transactions():

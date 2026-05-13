@@ -7,5 +7,5 @@ class TransactionSerializer1(serializers.ModelSerializer):
   class Meta: 
     model = Transaction
     fields = ['id', 'amount', 'currency', 'status', 'status_display', 'transaction_type', 'type_display',
-      'from_wallet_id', 'to_wallet_id', 'created_at']
+      'from_wallet_id', 'to_wallet_id', 'created_at', 'merchant_id']
     read_only_fields = ['id', 'status', 'created_at']

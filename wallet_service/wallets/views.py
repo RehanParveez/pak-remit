@@ -9,6 +9,7 @@ from wallets.serializers.basic import InternalWalletCreateSerializer
 from wallets.services import WalletService
 from rest_framework.response import Response
 from decimal import Decimal
+from parent.sharding_utils import get_shard_for_user, set_current_shard, clear_current_shard
 
 class WalletViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.GenericViewSet):
   queryset = Wallet.objects.all()
@@ -127,8 +128,14 @@ class WalletViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.G
     wallet_id = request.data.get('wallet_id') 
     amount = request.data.get('amount')
     transaction_id = request.data.get('transaction_id')
+    wallet_temp = Wallet.objects.using('shard_1').filter(id=wallet_id).first()
+    if not wallet_temp:
+      wallet_temp = Wallet.objects.using('shard_2').filter(id=wallet_id).first()
+    if wallet_temp:
+      shard = get_shard_for_user(wallet_temp.user_id)
+      set_current_shard(shard)
 
-    wallet = Wallet.objects.filter(user_id=wallet_id).first()
+    wallet = Wallet.objects.filter(id=wallet_id).first()
     if not wallet:
       return Response({'err': 'Wallet not found'}, status=404)
     try:
@@ -136,14 +143,25 @@ class WalletViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.G
       return Response({'booking_id': str(booking.id)}, status=200)
     except ValueError as e:
       return Response({'err': str(e)}, status=400)
+    finally:
+      clear_current_shard()
 
   @action(detail=False, methods=['post'])
   def settle(self, request):
     transaction_id = request.data.get('transaction_id')
-    booking = WalletBookings.objects.filter(reason=f'TXN_{transaction_id}', is_committed=False).first()
-    if not booking:
-      return Response({'err': 'no active booking is found for this transa'}, status=404)
-    success = WalletService.commit_funds(booking.id)
-    if success:
-      return Response({'status': 'settled'}, status=200)
-    return Response({'err': 'settlement failed'}, status=400)
+    try:
+     booking_temp = WalletBookings.objects.using('shard_1').filter(reason=f'TXN_{transaction_id}', is_committed=False).first()
+     if not booking_temp:
+       booking_temp = WalletBookings.objects.using('shard_2').filter(reason=f'TXN_{transaction_id}', is_committed=False).first()
+     if booking_temp:
+       shard = get_shard_for_user(booking_temp.wallet.user_id)
+       set_current_shard(shard)
+     booking = WalletBookings.objects.filter(reason=f'TXN_{transaction_id}', is_committed=False).first()
+     if not booking:
+       return Response({'err': 'no active booking is found for this transa'}, status=404)
+     success = WalletService.commit_funds(booking.id)
+     if success:
+       return Response({'status': 'settled'}, status=200)
+     return Response({'err': 'settlement failed'}, status=400)
+    finally:
+      clear_current_shard()

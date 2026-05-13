@@ -37,6 +37,7 @@ class Transaction(BaseModel):
   idempotency_key = models.CharField(max_length=270, unique=True)
   settled_at = models.DateTimeField(null=True, blank=True)
   completed_at = models.DateTimeField(null=True, blank=True)
+  merchant_id = models.UUIDField(db_index=True, null=True, blank=True)
 
   class Meta:
     indexes = [models.Index(fields=['idempotency_key']), models.Index(fields=['from_wallet_id']),
