@@ -38,19 +38,23 @@ def process_transaction_async(transaction_id):
     txn.status = 'completed'
     txn.completed_at = timezone.now()
     txn.save(update_fields=['status', 'completed_at'])
-    send_transaction_email(txn.id)
-    current_app.send_task('webhooks.tasks.trigger_transaction_webhook', args=[str(txn.id), str(txn.to_wallet_id)])
+    # from transactions.tasks import send_transaction_email # impor this here due to circular impor issue
+    current_app.send_task('emails.tasks.send_transaction_notification', args=[str(txn.id), 'rehanrural@gmail.com', 'rehanrural@gmail.com'], queue = 'notifications')
+    current_app.send_task('webhooks.tasks.trigger_transaction_webhook', args=[str(txn.id), str(txn.to_wallet_id)], queue = 'notifications')
     return f'the transa {txn.id} is finished.'
 
 @shared_task
-def send_transaction_email(transaction_id):
+def send_transaction_email(transaction_id, sender_email=None, receiver_email=None):
+  pass
   with shard_context():
     txn = Transaction.objects.filter(id=transaction_id).first()
     if not txn:
       return f'transaction {transaction_id} not pres.'
     if txn.status != 'completed':
       return f'transaction {transaction_id} is in {txn.status} state.'
-    current_app.send_task('emails.tasks.send_transaction_notification', args=[str(txn.id), 'rehanrural@gmail.com', 'rehanrural@gmail.com'])
+    sen_email = sender_email or 'rehanrural@gmail.com'
+    rec_email = receiver_email or 'rehanrural@gmail.com'
+    current_app.send_task('emails.tasks.send_transaction_notification', args=[str(txn.id), sen_email, rec_email], queue = 'notifications')
     return f'notifi for Txn {txn.id} to redis.'
 
 @shared_task

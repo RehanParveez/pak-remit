@@ -52,7 +52,7 @@ def trigger_transaction_webhook(transaction_id, merchant_id):
   for endpoint in endpoints:
     delivery = WebhookDelivery.objects.create(endpoint=endpoint, event_type = 'transaction.completed', payload={'transaction_id': transaction_id,
       'status': 'completed', 'timestamp': str(timezone.now())}, status='pending')
-    dispatch_webhook.delay(delivery.id)
+    dispatch_webhook.apply_async(args=[delivery.id], queue = 'notifications')
   return f'created & dispa. {endpoints.count()} deliveries {transaction_id}'
 
 @shared_task(name='webhooks.tasks.dispatch_webhook')

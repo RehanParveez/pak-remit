@@ -3,6 +3,7 @@ from wallets.models import Wallet, WalletLimit, WalletBookings, WalletRecord
 from decimal import Decimal
 from django.utils import timezone
 from django.db.models import Sum
+from parent.sharding_utils import get_current_shard
 
 class WalletService:
   @staticmethod
@@ -27,7 +28,8 @@ class WalletService:
   @staticmethod
   def reserve_funds(wallet_id, amount, reason, timeout_minutes=30):
     amount = Decimal(str(amount))
-    with transaction.atomic():
+    current_shard = get_current_shard()
+    with transaction.atomic(using=current_shard):
       wallet = Wallet.objects.select_for_update().get(id=wallet_id)
             
       if wallet.available_balance < amount:
@@ -40,7 +42,8 @@ class WalletService:
   
   @staticmethod
   def commit_funds(booking_id):
-    with transaction.atomic():
+    current_shard = get_current_shard()
+    with transaction.atomic(using=current_shard):
       booking = WalletBookings.objects.select_for_update().get(id=booking_id) 
       if booking.is_committed or booking.is_released:
         raise ValueError('the booking is alr proces.')
