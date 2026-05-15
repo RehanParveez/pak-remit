@@ -7,6 +7,10 @@ import time
 from django.utils import timezone
 from celery import current_app
 from django.conf import settings
+from parent.circuit_utils import breaker_call, WALLET_BREAKER, NOTIFICATION_BREAKER
+import logging
+
+logger = logging.getLogger(__name__)
 
 @shared_task
 def process_transaction_async(transaction_id):
@@ -19,7 +23,12 @@ def process_transaction_async(transaction_id):
     url_reserve = f'{settings.WALLET_SERVICE_URL}/wallets/wallet/reserve/'
     headers = {'X-Internal-Token': settings.INTERNAL_SERVICE_SECRET}
     payload = {'wallet_id': str(txn.from_wallet_id), 'amount': str(txn.amount), 'transaction_id': str(txn.id)}
-    response = requests.post(url_reserve, json=payload, headers=headers, timeout=10)
+    response, error = breaker_call(WALLET_BREAKER, requests.post, url_reserve, json=payload, headers=headers, timeout=10)
+    if error:
+      logger.error('wallet reserve circuit open for txn %s: %s', transaction_id, error)
+      txn.status = 'failed'
+      txn.save(update_fields=['status'])
+      return 'Failed at reservation, the wallet serv is unavail.'
     if response.status_code != 200:
       txn.status = 'failed'
       txn.save(update_fields=['status'])
@@ -29,8 +38,12 @@ def process_transaction_async(transaction_id):
     txn.save(update_fields=['status'])
     time.sleep(2) 
     url_settle = f'{settings.WALLET_SERVICE_URL}/wallets/wallet/settle/'
-    settle_response = requests.post(url_settle, json={'transaction_id': str(txn.id)}, headers=headers, timeout=10)
-
+    settle_response, error = breaker_call(WALLET_BREAKER, requests.post, url_settle, json={'transaction_id': str(txn.id)}, headers=headers, timeout=10)
+    if error:
+      logger.error('wallet settle circuit open for txn %s: %s', transaction_id, error)
+      txn.status = 'failed'
+      txn.save(update_fields=['status'])
+      return 'Failed at settlement, the wallet serv is unavail.'
     if settle_response.status_code != 200:
       txn.status = 'failed'
       txn.save(update_fields=['status'])

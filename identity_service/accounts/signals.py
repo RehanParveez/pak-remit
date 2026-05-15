@@ -6,6 +6,10 @@ import json
 import hmac
 import hashlib
 import requests
+from parent.circuit_utils import breaker_call, WALLET_BREAKER
+import logging
+
+logger = logging.getLogger(__name__)
 
 @receiver(post_save, sender=User)
 def trigger_wallet_creation(sender, instance, created, **kwargs):
@@ -18,4 +22,6 @@ def trigger_wallet_creation(sender, instance, created, **kwargs):
   payload_str = json.dumps(payload, sort_keys=True)
   signature = hmac.new(secret_key.encode(), payload_str.encode(), hashlib.sha256).hexdigest()
   headers = {'X-Internal-Token': secret_key, 'X-Internal-Signature': signature, 'Content-Type': 'application/json'}
-  requests.post(url, json=payload, headers=headers, timeout=5)
+  response, error = breaker_call(WALLET_BREAKER, requests.post, url, json=payload, headers=headers, timeout=5)
+  if error:
+    logger.error('the wallet crea failed for user %s: %s', instance.id, error)

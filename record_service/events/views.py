@@ -9,13 +9,14 @@ from events.serializers.basic import EventAppendSerializer, EventReplaySerialize
 
 class EventViewSet(viewsets.ViewSet):
   def get_permissions(self):
+    print('ACTION:', self.action)
     if self.action == 'append':
       return [InternalServiceGuard()]
     if self.action in ['wallet_events', 'transaction_events', 'replay']:
       return [PakRemitPermission()]
     return [permissions.IsAuthenticated()]
 
-  @action(detail=False, methods=['post'])
+  @action(detail=False, methods=['post'], authentication_classes=[])
   def append(self, request):
     serializer = EventAppendSerializer(data=request.data)
     if serializer.is_valid():

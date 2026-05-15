@@ -9,13 +9,15 @@ from wallets.serializers.basic import InternalWalletCreateSerializer
 from wallets.services import WalletService
 from rest_framework.response import Response
 from decimal import Decimal
-from parent.sharding_utils import get_shard_for_user, set_current_shard, clear_current_shard
+from parent.sharding_utils import set_current_shard, clear_current_shard
 
 class WalletViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.GenericViewSet):
   queryset = Wallet.objects.all()
   serializer_class = WalletSerializer
+  authentication_classes = []
 
   def get_permissions(self):
+    print('ACTION:', self.action)
     if self.action == 'create_internal':
       return [InternalServiceGuard()]
     if self.action == 'upgrade_tier':
@@ -42,7 +44,7 @@ class WalletViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.G
     user_id = auth_data.get('user_id')
     return WalletSelector.get_user_wallets(user_id)
 
-  @action(detail=False, methods=['post'])
+  @action(detail=False, methods=['post'], authentication_classes=[], url_path = 'create-internal')
   def create_internal(self, request):
     serializer = InternalWalletCreateSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
@@ -63,7 +65,7 @@ class WalletViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.G
     data['transaction_history'] = history
     return Response(data, status=200)
 
-  @action(detail=True, methods=['patch'])
+  @action(detail=True, methods=['patch'], authentication_classes=[], url_path = 'upgrade_tier')
   def upgrade_tier(self, request, pk=None):
     wallet = self.get_object()
     new_tier = request.data.get('tier')
@@ -74,7 +76,7 @@ class WalletViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.G
       return Response(WalletSerializer(wallet).data, status=200)
     return Response({'err': 'wrong tier. it s/h be tier1, tier2, or tier3.'}, status=400)
   
-  @action(detail=False, methods=['post'], permission_classes=[InternalServiceGuard])
+  @action(detail=False, methods=['post'], permission_classes=[InternalServiceGuard], authentication_classes=[], url_path = 'check-balance')
   def check_balance(self, request):
     from parent.sharding_utils import get_shard_for_user, set_current_shard, clear_current_shard
     wallet_id = request.data.get('wallet_id')
@@ -123,7 +125,7 @@ class WalletViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.G
     wallet.save(update_fields=['status']) 
     return Response({'message': f'Wallet {wallet.id} is now active.'}, status=200)
   
-  @action(detail=False, methods=['post'])
+  @action(detail=False, methods=['post'], authentication_classes=[])
   def reserve(self, request):
     wallet_id = request.data.get('wallet_id') 
     amount = request.data.get('amount')
@@ -146,7 +148,7 @@ class WalletViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.G
     finally:
       clear_current_shard()
 
-  @action(detail=False, methods=['post'])
+  @action(detail=False, methods=['post'], authentication_classes=[])
   def settle(self, request):
     transaction_id = request.data.get('transaction_id')
     actual_shard = None

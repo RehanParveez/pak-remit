@@ -3,6 +3,10 @@ from django.conf import settings
 import requests
 from django.utils import timezone
 from datetime import timedelta
+from parent.circuit_utils import breaker_call, WALLET_BREAKER
+import logging
+
+logger = logging.getLogger(__name__)
 
 class EnoughBalancePerm(permissions.BasePermission):
   def has_permission(self, request, view):
@@ -15,10 +19,16 @@ class EnoughBalancePerm(permissions.BasePermission):
             
     if not amount:
       return False
-    url = f'{settings.WALLET_SERVICE_URL}/wallets/wallet/check_balance/'
+    url = f'{settings.WALLET_SERVICE_URL}/wallets/wallet/check-balance/'
     headers = {'X-Internal-Token': settings.INTERNAL_SERVICE_SECRET, 'Content-Type': 'application/json'}
     payload = {'wallet_id': str(wallet_id), 'amount': str(amount)}
-    response = requests.post(url, json=payload, headers=headers, timeout=5)
+    print('URL:', url)
+    print('TOKEN:', settings.INTERNAL_SERVICE_SECRET)
+    print('PAYLOAD:', payload)
+    response, error = breaker_call(WALLET_BREAKER, requests.post, url, json=payload, headers=headers, timeout=5)
+    if error:
+      logger.error('wallet balance check circuit open: %s', error)
+      return False
     if response.status_code == 200:
       return True
     return False

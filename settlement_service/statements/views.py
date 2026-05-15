@@ -1,7 +1,6 @@
 from rest_framework import viewsets
 from statements.models import BankStatement, SettlementDifference
 from statements.serializers.detail import BankStatementSerializer, SettlementDifferenceSerializer
-from rest_framework.permissions import IsAdminUser
 from parent.permissions import PakRemitPermission
 from statements.serializers.basic import StatementUploadSerializer, DifferenceResolveSerializer, StatementListSerializer
 from rest_framework.decorators import action

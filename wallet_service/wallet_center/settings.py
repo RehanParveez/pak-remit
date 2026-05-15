@@ -45,6 +45,7 @@ INSTALLED_APPS = [
     'django_filters',
     'wallets',
     'limits',
+    'django_extensions',
     'django_celery_beat',
 ]
 
@@ -164,8 +165,9 @@ REST_FRAMEWORK = {
     'UNAUTHENTICATED_USER': None, 
 
     'DEFAULT_PERMISSION_CLASSES': (
-        'rest_framework.permissions.IsAuthenticated',
+        'rest_framework.permissions.AllowAny',
     ),
+    
     'DEFAULT_FILTER_BACKENDS': (
         'django_filters.rest_framework.DjangoFilterBackend',
         'rest_framework.filters.SearchFilter',
@@ -199,3 +201,16 @@ EMAIL_HOST_PASSWORD = 'fsxdvkynuukaojew'
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 
 INTERNAL_SERVICE_SECRET = 'p4k-r3m1t-sup3r-s3cr3t-2026-v1'
+
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+    },
+    'circuit_breaker': {
+        'BACKEND': 'django_redis.cache.RedisCache',
+        'LOCATION': 'redis://127.0.0.1:6379/6',
+        'OPTIONS': {
+            'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+        },
+    },
+}
