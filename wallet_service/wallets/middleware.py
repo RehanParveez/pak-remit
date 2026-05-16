@@ -22,7 +22,9 @@ class ShardRoutingMiddleware:
     if user_id:
       shard_name = get_shard_for_user(user_id)
       set_current_shard(shard_name)
-    response = self.get_response(request)
-    clear_current_shard()
+    try:
+      response = self.get_response(request)
+    finally: 
+      clear_current_shard()
         
     return response
