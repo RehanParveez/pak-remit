@@ -7,7 +7,7 @@ import time
 from django.utils import timezone
 from celery import current_app
 from django.conf import settings
-from parent.circuit_utils import breaker_call, WALLET_BREAKER, NOTIFICATION_BREAKER
+from parent.circuit_utils import breaker_call, WALLET_BREAKER
 import logging
 
 logger = logging.getLogger(__name__)

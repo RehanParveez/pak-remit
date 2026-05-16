@@ -22,9 +22,6 @@ class EnoughBalancePerm(permissions.BasePermission):
     url = f'{settings.WALLET_SERVICE_URL}/wallets/wallet/check-balance/'
     headers = {'X-Internal-Token': settings.INTERNAL_SERVICE_SECRET, 'Content-Type': 'application/json'}
     payload = {'wallet_id': str(wallet_id), 'amount': str(amount)}
-    print('URL:', url)
-    print('TOKEN:', settings.INTERNAL_SERVICE_SECRET)
-    print('PAYLOAD:', payload)
     response, error = breaker_call(WALLET_BREAKER, requests.post, url, json=payload, headers=headers, timeout=5)
     if error:
       logger.error('wallet balance check circuit open: %s', error)
