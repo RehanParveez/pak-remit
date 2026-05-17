@@ -1,7 +1,7 @@
 from django.conf import settings
 import hashlib
 from django.db import transaction
-from .models import User, Profile, UserDevice
+from accounts.models import User, Profile, UserDevice
 from django.utils import timezone
 from datetime import timedelta
 

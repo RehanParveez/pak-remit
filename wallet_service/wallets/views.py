@@ -20,10 +20,6 @@ class WalletViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.G
   authentication_classes = [ServiceJWTAuthentication, SessionAuthentication]
 
   def get_permissions(self):
-    print('ACTION:', self.action)
-    print('AUTH HEADER:', self.request.META.get('HTTP_AUTHORIZATION'))
-    print('AUTH:', self.request.auth)
-    print('USER:', self.request.user)
     if self.action == 'create_internal':
       return [InternalServiceGuard()]
     if self.action == 'upgrade_tier':

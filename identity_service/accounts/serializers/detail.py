@@ -70,3 +70,16 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
     data['is_kyc_verified'] = is_verified
         
     return data
+  
+class UpdatePasswordSerializer(serializers.Serializer):
+  old_password = serializers.CharField(required=True, write_only=True)
+  new_password = serializers.CharField(required=True, write_only=True, validators=[validate_password])
+
+  def __init__(self, *args, **kwargs):
+    self.user = kwargs.pop('user', None)
+    super().__init__(*args, **kwargs)
+
+  def validate_old_password(self, value):
+    if self.user and not self.user.check_password(value):
+      raise serializers.ValidationError('the old pass is wrong.')
+    return value

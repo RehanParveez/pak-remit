@@ -217,3 +217,7 @@ CACHES = {
         },
     },
 }
+
+if 'test' in sys.argv:
+  DATABASE_ROUTERS = []
+  DATABASES['default']['TEST'] = {'NAME': 'test_transaction_db'}

@@ -45,6 +45,7 @@ INSTALLED_APPS = [
     'django_filters',
     'accounts',
     'kyc',
+    'parent',
     'django_celery_beat'
 ]
 

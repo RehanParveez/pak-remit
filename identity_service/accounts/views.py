@@ -4,6 +4,8 @@ from rest_framework.decorators import action
 from rest_framework_simplejwt.views import TokenObtainPairView
 from accounts.serializers.detail import UserSerializer, UserSerializer, CustomTokenObtainPairSerializer
 from accounts.models import User
+from accounts.serializers.detail import UpdatePasswordSerializer
+from accounts.services import AuthService
 
 class AuthViewSet(viewsets.GenericViewSet):
   permission_classes = [permissions.AllowAny]
@@ -32,3 +34,11 @@ class UserViewSet(viewsets.GenericViewSet):
   def profile(self, request):
     serializer = self.get_serializer(request.user)
     return Response(serializer.data)
+  
+  @action(detail=False, methods=['patch'])
+  def update_password(self, request):
+    serializer = UpdatePasswordSerializer(data=request.data, user=request.user)
+    if serializer.is_valid():
+      AuthService.update_password(request.user, serializer.validated_data['new_password'])
+      return Response({'message': 'the password is upd'}, status=200)
+    return Response(serializer.errors, status=400)
