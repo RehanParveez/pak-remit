@@ -22,7 +22,7 @@ class KYCVerifiedPermission(permissions.BasePermission):
       return False
     if not user.is_authenticated:
       return False
-    if request.auth.get('is_verified'):
+    if request.auth.get('is_kyc_verified'):
       return True
 
     return False

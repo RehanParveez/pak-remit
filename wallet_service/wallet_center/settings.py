@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
+print('SETTINGS LOADING FROM wallet_center/settings.py')
 import os
 import sys
 from datetime import timedelta
@@ -158,7 +159,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
-        'rest_framework_simplejwt.authentication.JWTTokenUserAuthentication',
+        'parent.authentication.ServiceJWTAuthentication',
         'rest_framework.authentication.SessionAuthentication', 
     ),
     
@@ -175,6 +176,9 @@ REST_FRAMEWORK = {
     )
 }
 
+print('SETTINGS FILE LOADED')
+print('AUTH CLASSES:', REST_FRAMEWORK.get('DEFAULT_AUTHENTICATION_CLASSES'))
+
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
@@ -184,6 +188,8 @@ SIMPLE_JWT = {
     'AUTH_HEADER_TYPES': ('Bearer',),
     'USER_ID_FIELD': 'id',
     'USER_ID_CLAIM': 'user_id',
+    'AUTH_TOKEN_CLASSES': ('rest_framework_simplejwt.tokens.AccessToken',),
+    'TOKEN_TYPE_CLAIM': 'token_type',
 }
 
 CELERY_BROKER_URL = 'redis://127.0.0.1:6379/1'

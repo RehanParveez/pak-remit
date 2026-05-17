@@ -2,8 +2,6 @@ from rest_framework.test import APITestCase, APIClient, APIRequestFactory
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import AbstractUser
 from django.conf import settings
-from datetime import timedelta
-from django.utils import timezone
 from rest_framework_simplejwt.tokens import RefreshToken
 
 User = get_user_model()
@@ -101,18 +99,3 @@ class ParentTestCase(APITestCase):
     self.assertEqual(self.staff_user.username, 'staff_user')
     self.assertEqual(self.expired_kyc_user.username, 'expired_kyc')
     self.assertEqual(self.pending_kyc_user.username, 'pending_kyc')
-    
-# class IdentityServiceTestCase(ParentTestCase):
-#     @classmethod
-#     def setUpTestData(cls):
-#       from kyc.models import KYCProfile
-#       super().setUpTestData()
-#       cls.verified_kyc = KYCProfile.objects.create(user=cls.verified_user, status = 'approved', tier = 'tier2', is_verified=True,
-#         verified_at=timezone.now(), expires_at=timezone.now() + timedelta(days=40))
-#       cls.merchant_kyc = KYCProfile.objects.create(user=cls.merchant, status = 'approved', tier = 'tier3', is_verified=True,
-#         verified_at=timezone.now(), expires_at=timezone.now() + timedelta(days=50))
-#       cls.agent_kyc = KYCProfile.objects.create(user=cls.agent, status = 'approved', tier = 'tier2', is_verified=True, verified_at=timezone.now(),
-#         expires_at=timezone.now() + timedelta(days=60))
-#       cls.expired_kyc = KYCProfile.objects.create(user=cls.expired_kyc_user, status = 'expired', tier = 'tier1', is_verified=False, verified_at=timezone.now() - timedelta(days=20),
-#         expires_at=timezone.now() - timedelta(days=70))
-#       cls.pending_kyc = KYCProfile.objects.create(user=cls.pending_kyc_user, status = 'pending', tier = 'tier1', is_verified=False)

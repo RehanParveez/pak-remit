@@ -37,6 +37,7 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
     token = super().get_token(user)
     token['user_id'] = str(user.id)
     token['control'] = user.control
+    token['is_staff'] = user.is_staff
     is_verified = False
     if hasattr(user, 'kyc_profile'):
       is_verified = user.kyc_profile.is_verified
@@ -65,6 +66,7 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
       is_verified = self.user.kyc_profile.is_verified
     data['user_id'] = auth_user.id
     data['control'] = auth_user.control
+    data['is_staff'] = auth_user.is_staff
     data['is_kyc_verified'] = is_verified
         
     return data

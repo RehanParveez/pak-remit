@@ -10,14 +10,20 @@ from wallets.services import WalletService
 from rest_framework.response import Response
 from decimal import Decimal
 from parent.sharding_utils import set_current_shard, clear_current_shard
+from rest_framework_simplejwt.authentication import JWTTokenUserAuthentication
+from parent.authentication import ServiceJWTAuthentication
+from rest_framework.authentication import SessionAuthentication
 
 class WalletViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.GenericViewSet):
   queryset = Wallet.objects.all()
   serializer_class = WalletSerializer
-  authentication_classes = []
+  authentication_classes = [ServiceJWTAuthentication, SessionAuthentication]
 
   def get_permissions(self):
     print('ACTION:', self.action)
+    print('AUTH HEADER:', self.request.META.get('HTTP_AUTHORIZATION'))
+    print('AUTH:', self.request.auth)
+    print('USER:', self.request.user)
     if self.action == 'create_internal':
       return [InternalServiceGuard()]
     if self.action == 'upgrade_tier':
@@ -109,6 +115,12 @@ class WalletViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.G
 
   @action(detail=True, methods=['post'])
   def freeze(self, request, pk=None):
+    auth = JWTTokenUserAuthentication()
+    try:
+      result = auth.authenticate(request)
+      print('AUTH RESULT:', result)
+    except Exception as e:
+      print('AUTH ERROR:', e)
     wallet = self.get_object()
     if wallet.status == 'frozen':
       return Response({'message': 'the wallet is alr frozen.'}, status=400)

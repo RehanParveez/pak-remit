@@ -1,4 +1,4 @@
-from rest_framework.test import APITestCase
+from rest_framework.test import APITestCase, APIRequestFactory
 from django.test import RequestFactory
 from django.http import HttpResponse
 from wallets.middleware import ShardRoutingMiddleware
@@ -7,6 +7,11 @@ import json
 import threading
 from parent.sharding_utils import clear_current_shard, get_shard_for_user, get_current_shard, set_current_shard
 import time
+from rest_framework.views import APIView
+from django.conf import settings
+from wallets.permissions import InternalServiceGuard, WalletAccessPermission
+from rest_framework_simplejwt.tokens import RefreshToken
+from django.contrib.auth.models import User
 
 VALID_SHARDS = ['shard_1', 'shard_2']
 
@@ -171,7 +176,7 @@ class ShardRoutingMiddleware_EdgeCaseTests(ShardRoutingMiddlewareSetup):
 
   def test_malformed_json_body_does_not_crash(self):
     mw = self._simple_middleware()
-    request = self.factory.post('/wallets/wallet/create-internal/', data = 'this is { not valid json', content_type='application/json')
+    request = self.factory.post('/wallets/wallet/create-internal/', data = 'this is { not valid json', content_type = 'application/json')
     request.user = AnonymousUser()
     try:
       response = mw(request)
@@ -181,7 +186,7 @@ class ShardRoutingMiddleware_EdgeCaseTests(ShardRoutingMiddlewareSetup):
 
   def test_empty_body_does_not_crash(self):
     mw = self._simple_middleware()
-    request = self.factory.post('/wallets/wallet/create-internal/', content_type='application/json')
+    request = self.factory.post('/wallets/wallet/create-internal/', content_type = 'application/json')
     request._body = b''
     request.user = AnonymousUser()
     try:
@@ -193,7 +198,7 @@ class ShardRoutingMiddleware_EdgeCaseTests(ShardRoutingMiddlewareSetup):
   def test_body_without_user_id_key_does_not_crash(self):
     mw = self._simple_middleware()
     body = json.dumps({'currency': 'PKR', 'amount': '800'})
-    request = self.factory.post('/wallets/wallet/create-internal/', data=body, content_type='application/json')
+    request = self.factory.post('/wallets/wallet/create-internal/', data=body, content_type = 'application/json')
     request.user = AnonymousUser()
     try:
       response = mw(request)
@@ -205,7 +210,7 @@ class ShardRoutingMiddleware_EdgeCaseTests(ShardRoutingMiddlewareSetup):
     captured = {}
     mw = self._make_capturing_middleware(captured)
     body = json.dumps({'currency': 'PKR'})
-    request = self.factory.post('/wallets/wallet/create-internal/', data=body, content_type='application/json')
+    request = self.factory.post('/wallets/wallet/create-internal/', data=body, content_type = 'application/json')
     request.user = AnonymousUser()
     mw(request)
     self.assertIsNone(captured.get('shard'))
@@ -269,3 +274,124 @@ class ShardRoutingMiddleware_ThreadSafetyTests(ShardRoutingMiddlewareSetup):
     ta.join()
     tb.join()
     self.assertIsNone(shard_seen_by_b[0], 'the thread B saw a shard set by thread A, so thread local leaked')
+
+factory = APIRequestFactory()
+view = APIView()
+
+def make_auth(user_id = 'orign-user-uuid', control = 'user', is_staff=False, is_kyc_verified=True):
+  return {'user_id': user_id, 'control': control, 'is_staff': is_staff, 'is_kyc_verified': is_kyc_verified}
+
+def make_obj(**kwargs):
+  class Obj:
+    pass
+  o = Obj()
+  for k, v in kwargs.items():
+    setattr(o, k, v)
+  return o
+
+class WalletInternalServiceGuardTests(APITestCase):
+
+  def setUp(self):
+    self.perm = InternalServiceGuard()
+
+  def test_allows_correct_internal_token(self):
+    request = factory.post('/wallets/wallet/create-internal/', HTTP_X_INTERNAL_TOKEN=settings.INTERNAL_SERVICE_SECRET)
+    self.assertTrue(self.perm.has_permission(request, view))
+
+  def test_denies_wrong_token(self):
+    request = factory.post('/wallets/wallet/create-internal/', HTTP_X_INTERNAL_TOKEN = 'wrong_secret')
+    self.assertFalse(self.perm.has_permission(request, view))
+
+  def test_denies_missing_token(self):
+    request = factory.post('/wallets/wallet/create-internal/')
+    self.assertFalse(self.perm.has_permission(request, view))
+
+  def test_denies_empty_token(self):
+    request = factory.post('/wallets/wallet/create-internal/', HTTP_X_INTERNAL_TOKEN='')
+    self.assertFalse(self.perm.has_permission(request, view))
+
+  def test_denies_record_service_key_header_instead(self):
+    request = factory.post('/wallets/wallet/create-internal/', HTTP_X_INTERNAL_SERVICE_KEY=settings.INTERNAL_SERVICE_SECRET)
+    self.assertFalse(self.perm.has_permission(request, view))
+
+  def test_denies_user_jwt_as_internal_token(self):
+    user = User.objects.create_user(username = 'user2', password = 'user12312')
+    token = str(RefreshToken.for_user(user).access_token)
+    request = factory.post('/wallets/wallet/create-internal/', HTTP_X_INTERNAL_TOKEN=token)
+    self.assertFalse(self.perm.has_permission(request, view))
+
+class WalletAccessHasPermTests(APITestCase):
+
+  def setUp(self):
+    self.perm = WalletAccessPermission()
+
+  def test_denies_when_auth_is_none(self):
+    request = factory.get('/wallets/wallet/')
+    request.auth = None
+    self.assertFalse(self.perm.has_permission(request, view))
+
+  def test_denies_unverified_user(self):
+    request = factory.get('/wallets/wallet/')
+    request.auth = make_auth(is_kyc_verified=False, control = 'user')
+    self.assertFalse(self.perm.has_permission(request, view))
+
+  def test_allows_verified_user(self):
+    request = factory.get('/wallets/wallet/')
+    request.auth = make_auth(is_kyc_verified=True, control = 'user')
+    self.assertTrue(self.perm.has_permission(request, view))
+
+  def test_allows_verified_merchant(self):
+    request = factory.get('/wallets/wallet/')
+    request.auth = make_auth(is_kyc_verified=True, control = 'merchant')
+    self.assertTrue(self.perm.has_permission(request, view))
+
+  def test_allows_verified_agent(self):
+    request = factory.get('/wallets/wallet/')
+    request.auth = make_auth(is_kyc_verified=True, control = 'agent')
+    self.assertTrue(self.perm.has_permission(request, view))
+
+  def test_allows_admin_without_kyc(self):
+    request = factory.get('/wallets/wallet/')
+    request.auth = make_auth(is_kyc_verified=False, control = 'admin')
+    self.assertTrue(self.perm.has_permission(request, view))
+
+  def test_allows_staff_without_kyc(self):
+    request = factory.get('/wallets/wallet/')
+    request.auth = make_auth(is_kyc_verified=False, control = 'user', is_staff=True)
+    self.assertTrue(self.perm.has_permission(request, view))
+
+  def test_denies_unknown_control(self):
+    request = factory.get('/wallets/wallet/')
+    request.auth = make_auth(is_kyc_verified=True, control = 'wrong')
+    self.assertFalse(self.perm.has_permission(request, view))
+
+class WalletAccessHasObjectPermTests(APITestCase):
+
+  def setUp(self):
+    self.perm = WalletAccessPermission()
+    self.user_id = '335d3f19-20b7-4952-b96a-5164196fa151'
+    self.other_id = '5b016d6f-b278-4566-8833-937207717cc7'
+
+  def test_admin_can_access_any_wallet(self):
+    request = factory.get('/wallets/wallet/1/')
+    request.auth = make_auth(user_id=self.user_id, control = 'admin')
+    obj = make_obj(user_id=self.other_id)
+    self.assertTrue(self.perm.has_object_permission(request, view, obj))
+
+  def test_user_can_access_own_wallet(self):
+    request = factory.get('/wallets/wallet/1/')
+    request.auth = make_auth(user_id=self.user_id, control = 'user')
+    obj = make_obj(user_id=self.user_id)
+    self.assertTrue(self.perm.has_object_permission(request, view, obj))
+
+  def test_user_cannot_access_other_wallet(self):
+    request = factory.get('/wallets/wallet/1/')
+    request.auth = make_auth(user_id=self.user_id, control = 'user')
+    obj = make_obj(user_id=self.other_id)
+    self.assertFalse(self.perm.has_object_permission(request, view, obj))
+
+  def test_denies_when_auth_is_none(self):
+    request = factory.get('/wallets/wallet/1/')
+    request.auth = None
+    obj = make_obj(user_id=self.user_id)
+    self.assertFalse(self.perm.has_object_permission(request, view, obj))

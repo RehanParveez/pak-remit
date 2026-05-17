@@ -1,12 +1,19 @@
 from rest_framework import permissions
 
 class PakRemitPermission(permissions.BasePermission):
+  def _get_auth(self, request):
+    if request.auth:
+      return request.auth
+    if request.user and hasattr(request.user, 'token'):
+      return request.user.token
+    return None
   def has_permission(self, request, view):
-    if not request.auth:
+    auth = self._get_auth(request)
+    if not auth:
       return False
-    user_control = request.auth.get('control')
-    is_staff = request.auth.get('is_staff', False)
-    is_verified = request.auth.get('is_kyc_verified', False)
+    user_control = auth.get('control')
+    is_staff = auth.get('is_staff', False)
+    is_verified = auth.get('is_kyc_verified', False)
     if user_control == 'admin':
       return True
     if is_staff:
@@ -20,10 +27,11 @@ class PakRemitPermission(permissions.BasePermission):
     return False
 
   def has_object_permission(self, request, view, obj):
-    if not request.auth:
+    auth = self._get_auth(request)
+    if not auth:
       return False
-    requesting_user_id = str(request.auth.get('user_id'))
-    user_control = request.auth.get('control')
+    requesting_user_id = str(auth.get('user_id'))
+    user_control = auth.get('control')
 
     if user_control == 'admin':
       return True
