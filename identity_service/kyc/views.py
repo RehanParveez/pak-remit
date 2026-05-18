@@ -52,6 +52,9 @@ class KYCViewSet(viewsets.ModelViewSet):
   def approve(self, request, pk=None):
     profile = self.get_object()
     target_tier = request.data.get('tier', 'tier1')
+    valid_tiers = ['tier1', 'tier2', 'tier3']
+    if target_tier not in valid_tiers:
+      return Response({'err': 'wrong tier. it s/h be tier1, tier2, or tier3.'}, status=400)
     KYCService.approve_kyc(kyc_profile=profile, admin_user=request.user, tier=target_tier)
     return Response({'message': 'the KYC is approv.'})
 

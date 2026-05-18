@@ -4,9 +4,14 @@ class PakRemitPermission(permissions.BasePermission):
   def _get_auth(self, request):
     if request.auth:
       return request.auth
-    if request.user and hasattr(request.user, 'token'):
+    if not hasattr(request, 'user'):
+      return None
+    if not request.user:
+      return None
+    if hasattr(request.user, 'token'):
       return request.user.token
     return None
+  
   def has_permission(self, request, view):
     auth = self._get_auth(request)
     if not auth:
@@ -44,6 +49,5 @@ class PakRemitPermission(permissions.BasePermission):
       return str(obj.wallet.user_id) == requesting_user_id
     for field in ['user_id', 'owner_id', 'customer_id']:
       if hasattr(obj, field):
-        return str(getattr(obj, field)) == requesting_user_id
-            
+        return str(getattr(obj, field)) == requesting_user_id      
     return False

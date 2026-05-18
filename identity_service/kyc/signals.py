@@ -1,6 +1,6 @@
 from django.dispatch import receiver
 from django.db.models.signals import post_save
-from .models import KYCProfile
+from kyc.models import KYCProfile
 import json, hmac, hashlib, requests
 from django.conf import settings
 from parent.circuit_utils import breaker_call, WALLET_BREAKER

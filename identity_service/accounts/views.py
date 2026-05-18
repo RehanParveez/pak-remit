@@ -37,7 +37,12 @@ class UserViewSet(viewsets.GenericViewSet):
   
   @action(detail=False, methods=['patch'])
   def update_password(self, request):
+    print('USER:', request.user)
+    print('IS AUTH:', request.user.is_authenticated)
+    print('DATA:', request.data)
     serializer = UpdatePasswordSerializer(data=request.data, user=request.user)
+    print('VALID:', serializer.is_valid())
+    print('ERRORS:', serializer.errors)
     if serializer.is_valid():
       AuthService.update_password(request.user, serializer.validated_data['new_password'])
       return Response({'message': 'the password is upd'}, status=200)

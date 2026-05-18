@@ -19,7 +19,7 @@ class UserSerializer(serializers.ModelSerializer):
 
   class Meta:
     model = User
-    fields = ['email', 'phone', 'username', 'password', 'password_confirm', 'full_name', 'cnic', 'created_at', 'updated_at']
+    fields = ['email', 'phone', 'username', 'password', 'password_confirm', 'full_name', 'cnic', 'control', 'created_at', 'updated_at']
     read_only_fields = ['created_at', 'updated_at']
 
   def validate(self, attrs):
@@ -82,4 +82,9 @@ class UpdatePasswordSerializer(serializers.Serializer):
   def validate_old_password(self, value):
     if self.user and not self.user.check_password(value):
       raise serializers.ValidationError('the old pass is wrong.')
+    return value
+  
+  def validate_new_password(self, value):
+    if len(value) < 9:
+      raise serializers.ValidationError('the new pass must be at least 9 characters.')
     return value
